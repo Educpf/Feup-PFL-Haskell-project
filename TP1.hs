@@ -1,5 +1,5 @@
 import qualified Data.List
---import qualified Data.Array
+import qualified Data.Array
 --import qualified Data.Bits
 
 -- PFL 2024/2025 Practical assignment 1
@@ -10,7 +10,8 @@ type City = String
 type Path = [City]
 type Distance = Int
 type AdjList = [(City,[(City,Distance)])]
-
+type AdjMatrix = Data.Array.Array (Int,Int) (Maybe Distance)
+type DijkstraList = Data.Array.Array Int (Bool, Distance, [Int])
 type RoadMap = [(City,City,Distance)]
 
 
@@ -62,6 +63,18 @@ dfs al c visited    |  c `elem` visited = visited
 isStronglyConnected :: RoadMap -> Bool
 isStronglyConnected rm = length (dfs (convertToAdjList rm) (head (cities rm)) []) == totalCity
                         where totalCity = length (cities rm)
+
+
+getDijkstraPath :: DijkstraList -> Int -> [[City]] -- Use cities as Int
+getDijkstraPath list dest  = map (show dest : ) (foldr (\elem acc -> acc ++ getDijkstraPath list elem) [] back)
+                                where (visited,_,back) = list Data.Array.! dest
+
+
+dijkstra :: AdjMatrix -> DijkstraList -> City -> City -> [Path]
+dijkstra con list o d | allvisited list = getDijkstraPath list d
+                      | otherwise = dijkstra con updatedList o d
+                            where updatedList = updateConnections con (getSmallerUnvisited list) list
+
 
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath = undefined
