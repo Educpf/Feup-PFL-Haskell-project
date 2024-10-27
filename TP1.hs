@@ -13,17 +13,24 @@ type AdjList = [(City,[(City,Distance)])]
 
 type RoadMap = [(City,City,Distance)]
 
+
+convertToAdjList :: RoadMap -> AdjList
+convertToAdjList rm = [(city, adjacent rm city) | city <- cities rm]
+
+
 cities :: RoadMap -> [City]
 cities = Data.List.nub . foldr (\ (c1,c2,_) acc -> c1 : c2 : acc) []
 
 areAdjacent :: RoadMap -> City -> City -> Bool
 areAdjacent rm c1 c2 = or [(c1==x && c2==y) || (c2==x && c1==y) | (x,y,_) <- rm]
+-- areAdjacent rm c1 c2 = any (\(x,y,_) -> (c1==x && c2==y) || (c2==x && c1==y)) rm 
 
 distance :: RoadMap -> City -> City -> Maybe Distance
 distance rm c1 c2 = fmap (\(_,_,d) -> d) (Data.List.find (\(x,y,_) -> (c1==x && c2==y) || (c2==x && c1==y)) rm)
 
 adjacent :: RoadMap -> City -> [(City,Distance)]
-adjacent rm c = [(y,d)| (x,y,d) <- rm, x == c] ++ [(x,d)| (x,y,d) <- rm, y == c]
+-- adjacent rm c = [ (y,d)  | (x,y,d) <- rm, x == c] ++ [(x,d)| (x,y,d) <- rm, y == c]
+adjacent rm c = [ if  x == c then (y,d) else (x, d) | (x,y,d) <- rm, x == c || y == c]
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance rm p = foldr (\ v acc -> case (v,acc) of
@@ -31,15 +38,30 @@ pathDistance rm p = foldr (\ v acc -> case (v,acc) of
                                             (_,Nothing) -> Nothing
                                             (Just x,Just tot) -> Just (x + tot) ) (Just 0) [distance rm x y | (x,y) <- zip p (tail p)]
 
+
 rome :: RoadMap -> [City]
-rome rm = 
-    let degrees = [(x,Data.List.length [c | c <- foldr (\ (c1,c2,_) acc -> c1 : c2 : acc) [] rm, c == x ]) | x <- cities rm]
-        max = Data.List.maximum (map snd degrees)
-    in [c | (c,d) <- degrees, d == max]
-    
+--  rome rm =
+--     let degrees = [(x,Data.List.length [c | c <- foldr (\ (c1,c2,_) acc -> c1 : c2 : acc) [] rm, c == x ]) | x <- cities rm]
+--         max = Data.List.maximum (map snd degrees)
+--     in [c | (c,d) <- degrees, d == max]
+rome rm = [ c | (c, d) <- cityDegree, d == maxDegree ]
+        where
+            cityDegree = map (\(c, l)-> (c, Data.List.length l)) (convertToAdjList rm)
+            maxDegree = Data.List.maximum (map snd cityDegree)
+
+
+-- array ! 2
+
+dfs :: AdjList -> City -> [City] -> [City]
+dfs al c visited    |  c `elem` visited = visited
+                    | otherwise = foldr (dfs al) (c : visited) children
+        where
+            children =  head [ map fst d | (city, d) <- al, city == c]
+
 
 isStronglyConnected :: RoadMap -> Bool
-isStronglyConnected = undefined
+isStronglyConnected rm = length (dfs (convertToAdjList rm) (head (cities rm)) []) == totalCity
+                        where totalCity = length (cities rm)
 
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath = undefined
