@@ -69,11 +69,19 @@ getDijkstraPath :: DijkstraList -> Int -> [[City]] -- Use cities as Int
 getDijkstraPath list dest  = map (show dest : ) (foldr (\elem acc -> acc ++ getDijkstraPath list elem) [] back)
                                 where (visited,_,back) = list Data.Array.! dest
 
+getSmallerUnvisited :: DijkstraList -> Int
+getSmallerUnvisited list = result
+                where (_, result, _) = foldl (\(i, bi, bd) (v, d, _)  -> if not v then (i+1, i, d) else (i+1, bi, bd)) (-1, -1, -1) (Data.Array.elems list)
 
-dijkstra :: AdjMatrix -> DijkstraList -> City -> City -> [Path]
-dijkstra con list o d | allvisited list = getDijkstraPath list d
-                      | otherwise = dijkstra con updatedList o d
-                            where updatedList = updateConnections con (getSmallerUnvisited list) list
+updateConnections :: AdjMatrix -> DijkstraList -> Int -> DijkstraList
+updateConnections con list node = fst Data.Array.bounds con
+
+dijkstra :: AdjMatrix -> DijkstraList -> Int -> Int -> [Path]
+dijkstra con list o d | nextNode == -1 = getDijkstraPath list d
+                      | otherwise = dijkstra con updatedList o d-- Usar o getsmallerUnvisited já pra me dar se todos foram visitados ou não!! Se retornar -1 então são todos visitados!!!
+                            where
+                                updatedList = updateConnections con list nextNode
+                                nextNode = getSmallerUnvisited list
 
 
 shortestPath :: RoadMap -> City -> City -> [Path]
