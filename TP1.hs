@@ -65,16 +65,34 @@ isStronglyConnected rm = length (dfs (convertToAdjList rm) (head (cities rm)) []
                         where totalCity = length (cities rm)
 
 
+-- DIJKSTRA
+
 getDijkstraPath :: DijkstraList -> Int -> [[City]] -- Use cities as Int
-getDijkstraPath list dest  = map (show dest : ) (foldr (\elem acc -> acc ++ getDijkstraPath list elem) [] back)
+getDijkstraPath list dest  | null back = [[show dest]]
+                            | otherwise =  map ( ++ [show dest] ) (foldr (\elem acc -> acc ++ getDijkstraPath list elem) [] back)
                                 where (visited,_,back) = list Data.Array.! dest
 
 getSmallerUnvisited :: DijkstraList -> Int
 getSmallerUnvisited list = result
-                where (_, result, _) = foldl (\(i, bi, bd) (v, d, _)  -> if not v then (i+1, i, d) else (i+1, bi, bd)) (-1, -1, -1) (Data.Array.elems list)
+                where (_, result, _) = foldl (\(i, bi, bd) (v, d, _)  -> if not v && (d < bd) then (i+1, i, d) else (i+1, bi, bd)) (0, -1, maxBound) (Data.Array.elems list)
+
+updateConnection :: AdjMatrix -> DijkstraList -> Int -> Int -> (Bool, Distance, [Int]) -- Only one element
+updateConnection matrix list origin dest | origin == dest = (True, d_o, p_o)
+                                         | distance == Nothing = (v_d,d_d,p_d)
+                                         | newDistance <  d_d = (v_d, newDistance, [origin])
+                                         | newDistance ==  d_d = (v_d, d_d, origin : p_d)
+                                         | otherwise = (v_d, d_d, p_d)
+                                            where
+                                                (v_o,d_o,p_o) = list Data.Array.! origin
+                                                (v_d,d_d,p_d) = list Data.Array.! dest
+                                                distance = matrix Data.Array.! (origin, dest)
+                                                newDistance = case distance of 
+                                                                Nothing -> d_o
+                                                                Just num -> num + d_o
 
 updateConnections :: AdjMatrix -> DijkstraList -> Int -> DijkstraList
-updateConnections con list node = fst Data.Array.bounds con
+updateConnections con list node = Data.Array.array (0, maxI) [ (i, updateConnection con list node i) | i <- [0..maxI]]
+                            where (_, maxI)= Data.Array.bounds list
 
 dijkstra :: AdjMatrix -> DijkstraList -> Int -> Int -> [Path]
 dijkstra con list o d | nextNode == -1 = getDijkstraPath list d
@@ -83,9 +101,19 @@ dijkstra con list o d | nextNode == -1 = getDijkstraPath list d
                                 updatedList = updateConnections con list nextNode
                                 nextNode = getSmallerUnvisited list
 
+createAdjMatrix :: RoadMap -> AdjMatrix
+createAdjMatrix rm = Data.Array.array ((0,0), (ncities,ncities)) [((x,y),distance rm (show x) (show y))|  x <- [0..ncities], y <- [0..ncities]]
+                    where ncities = length (cities rm) -1
+
+createDijkstraTable :: Int -> Int -> DijkstraList
+createDijkstraTable len origin = Data.Array.array (0,len) [if i == origin then (i,(False, 0, [])) else(i,(False, maxBound, [])) | i <- [0..len]]
 
 shortestPath :: RoadMap -> City -> City -> [Path]
-shortestPath = undefined
+shortestPath rm origin destiny = dijkstra adjMatrix (createDijkstraTable numCities (read origin)) (read origin) (read destiny)
+                                    where adjMatrix = createAdjMatrix rm
+                                          (_, numCities) = snd (Data.Array.bounds adjMatrix)
+
+-- 
 
 travelSales :: RoadMap -> Path
 travelSales = undefined
@@ -102,3 +130,6 @@ gTest2 = [("0","1",10),("0","2",15),("0","3",20),("1","2",35),("1","3",25),("2",
 
 gTest3 :: RoadMap -- unconnected graph
 gTest3 = [("0","1",4),("2","3",2)]
+
+gTest4 :: RoadMap
+gTest4 = [("0","1",10),("0","2",15),("1","2",35),("1","3",25),("2","3",20)]
