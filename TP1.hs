@@ -1,6 +1,6 @@
 import qualified Data.List
 import qualified Data.Array
---import qualified Data.Bits
+import qualified Data.Bits
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -12,6 +12,7 @@ type Distance = Int
 type AdjList = [(City,[(City,Distance)])]
 type AdjMatrix = Data.Array.Array (Int,Int) (Maybe Distance)
 type DijkstraList = Data.Array.Array Int (Bool, Distance, [Int])
+type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance)
 type RoadMap = [(City,City,Distance)]
 
 
@@ -86,7 +87,7 @@ updateConnection matrix list origin dest | origin == dest = (True, d_o, p_o)
                                                 (v_o,d_o,p_o) = list Data.Array.! origin
                                                 (v_d,d_d,p_d) = list Data.Array.! dest
                                                 distance = matrix Data.Array.! (origin, dest)
-                                                newDistance = case distance of 
+                                                newDistance = case distance of
                                                                 Nothing -> d_o
                                                                 Just num -> num + d_o
 
@@ -115,8 +116,30 @@ shortestPath rm origin destiny = dijkstra adjMatrix (createDijkstraTable numCiti
 
 -- 
 
+fillTable :: AdjMatrix -> MemoizationTable -> Int -> Int -> MemoizationTable
+fillTable matrix table visited origin | storedValue /= Nothing = table -- Value already stored in table
+                                      | 1 Data.Bits.shiftL numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), distanceToZero)] -- All nodes already visited
+                                      | otherwise = foldl (\acc elem -> fillTable matrix acc updatedVisited elem) table [i | i <- [0..numCities - 1], (1 Data.Bits.shiftL i Data.Bits..&. updatedVisited) == 0, (matrix Data.Array.! (origin, i)) /= Nothing]
+                                        where
+                                            (_, numCities) = snd (Data.Array.bounds matrix)
+                                            storedValue = table Data.Array.! (visited, origin)
+                                            updatedVisited = visited Data.Bits..|. 1 Data.Bits.shiftL origin
+                                            distanceToZero = matrix Data.Array.! (origin, 0)
+
+createMemoizationTable :: Int -> MemoizationTable
+createMemoizationTable size = Data.Array.array ((0, 0), (size ^ 2, size)) [ ((x, y), Nothing) | x <- [0..size^2], y <- [0 .. size]]
+
+createPath :: MemoizationTable -> Int -> Path
+createPath memo visited = 
+                        where  
+                            column = [memo Data.Array.! (visited, i) | i <- [0..]]
+                            (_, numCities) = snd (memo Data.Array.bounds memo)
+
 travelSales :: RoadMap -> Path
-travelSales = undefined
+travelSales rm = getPath (fillTable adjMAtrix (createMemoizationTable numCities) 0 0)
+                where
+                    adjMatrix = createAdjMatrix rm
+                    (_, numCities) = snd (Data.Array.bounds adjMatrix)
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
