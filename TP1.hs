@@ -117,29 +117,55 @@ shortestPath rm origin destiny = dijkstra adjMatrix (createDijkstraTable numCiti
 -- 
 
 fillTable :: AdjMatrix -> MemoizationTable -> Int -> Int -> MemoizationTable
-fillTable matrix table visited origin | storedValue /= Nothing = table -- Value already stored in table
-                                      | 1 Data.Bits.shiftL numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), distanceToZero)] -- All nodes already visited
-                                      | otherwise = foldl (\acc elem -> fillTable matrix acc updatedVisited elem) table [i | i <- [0..numCities - 1], (1 Data.Bits.shiftL i Data.Bits..&. updatedVisited) == 0, (matrix Data.Array.! (origin, i)) /= Nothing]
+fillTable matrix table visited origin | storedValue /= Nothing = table -- Value already stored in table, return table
+                                        -- all visited besides current
+                                      | Data.Bits.shiftL 1 numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), distanceToZero)] -- All nodes already visited, complete table
+                                      | otherwise = updatedTable Data.Array.// [((visited, origin), Just distance)] -- Get table from children and add entry of 
                                         where
                                             (_, numCities) = snd (Data.Array.bounds matrix)
+                                            -- Get value stored in memoizationTable for current position
                                             storedValue = table Data.Array.! (visited, origin)
-                                            updatedVisited = visited Data.Bits..|. 1 Data.Bits.shiftL origin
+                                            -- Make current node visited
+                                            updatedVisited = visited Data.Bits..|. Data.Bits.shiftL 1 origin
                                             distanceToZero = matrix Data.Array.! (origin, 0)
+                                            -- Get unvisited nodes connected to current node
+                                            nextNodes = [i | i <- [0..numCities - 1], (Data.Bits.shiftL 1 i Data.Bits..&. updatedVisited) == 0, (matrix Data.Array.! (origin, i)) /= Nothing]
+                                            -- Get memoizationTable updated by descendants and the best next city to follow 
+                                            (updatedTable, distance, nextCity) = foldl (\(accTable, bestDistance, bestI) elem ->  -- Recursive update of tables and find best Distance
+                                                                                                        let
+                                                                                                            updatedTable = fillTable matrix accTable updatedVisited elem
+                                                                                                            distanceFromNode = updatedTable Data.Array.! (updatedVisited, elem)
+                                                                                                            distanceToNode = matrix Data.Array.! (origin, elem)
+                                                                                                            totalDistance = case (distanceFromNode, distanceToNode) of 
+                                                                                                                        (Nothing, _) -> maxBound
+                                                                                                                        (_, Nothing) -> maxBound
+                                                                                                                        (Just d1, Just d2) -> d1 + d2
+                                                                                                            in if totalDistance < bestDistance then (updatedTable,totalDistance,elem) else (updatedTable, bestDistance,bestI)) (table,  maxBound, -1) nextNodes
 
 createMemoizationTable :: Int -> MemoizationTable
 createMemoizationTable size = Data.Array.array ((0, 0), (size ^ 2, size)) [ ((x, y), Nothing) | x <- [0..size^2], y <- [0 .. size]]
 
 createPath :: MemoizationTable -> Int -> Path
-createPath memo visited = 
-                        where  
-                            column = [memo Data.Array.! (visited, i) | i <- [0..]]
-                            (_, numCities) = snd (memo Data.Array.bounds memo)
+createPath memoTable visited |  Data.Bits.shiftL 1 numCities - 1 == visited = ["0"]-- all visited Return 0
+                             | otherwise = show bestCity : createPath memoTable updatedVisited
+                                where  
+                                    (_, numCities) = snd ( Data.Array.bounds memoTable)
+                                    line = [memoTable Data.Array.! (visited, i) | i <- [0..]]
+                                    (i, bestCity, distance) = foldl (\(i, bestCity, bestDistance) city ->
+                                                                    let 
+                                                                        distance =  memoTable Data.Array.! (visited, city)
+                                                                        changedDistance = case distance of
+                                                                                    Nothing -> maxBound
+                                                                                    Just d -> d
+                                                                        in if distance < bestDistance then (i+1, city, distance) else (i+1, bestCity, bestDistance)) (0, -1, maxBound) line
+                                    updatedVisited = visited Data.Bits..|. Data.Bits.shiftL 1 bestCity
 
 travelSales :: RoadMap -> Path
-travelSales rm = getPath (fillTable adjMAtrix (createMemoizationTable numCities) 0 0)
-                where
-                    adjMatrix = createAdjMatrix rm
-                    (_, numCities) = snd (Data.Array.bounds adjMatrix)
+travelSales = undefined
+-- travelSales rm = getPath (fillTable adjMAtrix (createMemoizationTable numCities) 0 0)
+--                 where
+--                     adjMatrix = createAdjMatrix rm
+--                     (_, numCities) = snd (Data.Array.bounds adjMatrix)
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
