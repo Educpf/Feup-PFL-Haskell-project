@@ -152,18 +152,27 @@ createMemoizationTable size = Data.Array.array ((0, 0), (maxRow, maxColumn)) [ (
                                     maxColumn = size - 1 
                                     maxRow = (2 ^ size) -1
 
-createPath :: MemoizationTable -> Int -> Int -> Path -- update create path
-createPath memoTable visited lastCity    |  Data.Bits.shiftL 1 numCities - 1 == visited = ["0"] -- all visited Return 0
+createPath :: AdjMatrix -> MemoizationTable -> Int -> Int -> Path -- update create path
+createPath matrix memoTable visited lastCity    |  Data.Bits.shiftL 1 numCities - 1 == visited = ["0"] -- all visited Return 0
                                             | nextCity == -1 = []
-                                            | otherwise = show currentCity : createPath memoTable updatedVisited nextCity
+                                            | otherwise = show lastCity : createPath matrix memoTable updatedVisited nextCity
                                                 where  
+
+                                                    nextNodes = [memoTable Data.Array.! (visited, i) | i <- [0..numCities - 1], (Data.Bits.shiftL 1 i Data.Bits..&. updatedVisited) == 0, (matrix Data.Array.! (lastCity, i)) /= Nothing]
                                                     numCities = snd (snd (Data.Array.bounds memoTable)) + 1
-                                                    (_, nextCity) = memoTable Data.Array.! (visited, currentCity)
-                                                    updatedVisited = visited Data.Bits..|. Data.Bits.shiftL 1 currentCity
+                                                    updatedVisited = visited Data.Bits..|. Data.Bits.shiftL 1 nextCity
+                                                    (i, nextCity, distance) = foldl (\(i, bi, bd) elem -> 
+                                                                    let 
+                                                                        distanceToNode = matrix Data.Array.! (lastCity, i)
+                                                                        totalDistance = case (distanceToNode, elem) of
+                                                                                    (_, Nothing) -> maxBound
+                                                                                    (Nothing, _) -> maxBound
+                                                                                    (Just v1, Just v2) -> v1 + v2
+                                                                        in if totalDistance < bd then (i+1, i, totalDistance) else (i+1,bi,bd)) (0, -1 , maxBound) nextNodes
 
 
 travelSales :: RoadMap -> Path
-travelSales rm = createPath (fillTable adjMatrix (createMemoizationTable (numCities+1) ) 0 0) 1 0
+travelSales rm = createPath adjMatrix (fillTable adjMatrix (createMemoizationTable (numCities+1) ) 0 0) 1 0
                     where
                         adjMatrix = createAdjMatrix rm
                         (_, numCities) = snd (Data.Array.bounds adjMatrix) 
