@@ -12,7 +12,7 @@ type Distance = Int
 type AdjList = [(City,[(City,Distance)])]
 type AdjMatrix = Data.Array.Array (Int,Int) (Maybe Distance)
 type DijkstraList = Data.Array.Array Int (Bool, Distance, [Int])
-type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance, Int)
+type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance)
 type RoadMap = [(City,City,Distance)]
 
 
@@ -123,12 +123,12 @@ getNumCities matrix = snd (snd (Data.Array.bounds matrix)) + 1
 fillTable :: AdjMatrix -> MemoizationTable -> Int -> Int -> MemoizationTable
 fillTable matrix table visited origin | storedValue /= Nothing = table -- Value already stored in table, return table
                                         -- all visited besides current
-                                      | Data.Bits.shiftL 1 numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), (distanceToZero, 0))] -- All nodes already visited, complete table
-                                      | otherwise = updatedTable Data.Array.// [((visited, origin), (Just distance, nextCity))]-- Get table from children and add entry of 
+                                      | Data.Bits.shiftL 1 numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), distanceToZero)] -- All nodes already visited, complete table
+                                      | otherwise = updatedTable Data.Array.// [((visited, origin), Just distance)]-- Get table from children and add entry of 
                                         where
                                             numCities = getNumCities matrix
                                             -- Get value stored in memoizationTable for current position
-                                            (storedValue, nextCalculatedCity) = table Data.Array.! (visited, origin)
+                                            storedValue = table Data.Array.! (visited, origin)
                                             -- Make current node visited
                                             updatedVisited = visited Data.Bits..|. Data.Bits.shiftL 1 origin
                                             distanceToZero = matrix Data.Array.! (origin, 0)
@@ -138,7 +138,7 @@ fillTable matrix table visited origin | storedValue /= Nothing = table -- Value 
                                             (updatedTable, distance, nextCity) = foldl (\(accTable, bestDistance, bestI) elem ->  -- Recursive update of tables and find best Distance
                                                                                                         let
                                                                                                             updatedTable = fillTable matrix accTable updatedVisited elem
-                                                                                                            (distanceFromNode, _) = updatedTable Data.Array.! (updatedVisited, elem)
+                                                                                                            distanceFromNode = updatedTable Data.Array.! (updatedVisited, elem)
                                                                                                             distanceToNode = matrix Data.Array.! (origin, elem)
                                                                                                             totalDistance = case (distanceFromNode, distanceToNode) of 
                                                                                                                         (Nothing, _) -> maxBound
@@ -147,13 +147,13 @@ fillTable matrix table visited origin | storedValue /= Nothing = table -- Value 
                                                                                                             in if totalDistance < bestDistance then (updatedTable,totalDistance,elem) else (updatedTable, bestDistance,bestI)) (table, maxBound, -1) nextNodes
 
 createMemoizationTable :: Int -> MemoizationTable
-createMemoizationTable size = Data.Array.array ((0, 0), (maxRow, maxColumn)) [ ((x, y), (Nothing, -1)) | x <- [0..maxRow], y <- [0 .. maxColumn]]
+createMemoizationTable size = Data.Array.array ((0, 0), (maxRow, maxColumn)) [ ((x, y), Nothing) | x <- [0..maxRow], y <- [0 .. maxColumn]]
                                 where 
                                     maxColumn = size - 1 
                                     maxRow = (2 ^ size) -1
 
 createPath :: MemoizationTable -> Int -> Int -> Path -- update create path
-createPath memoTable visited currentCity    |  Data.Bits.shiftL 1 numCities - 1 == visited = ["0"] -- all visited Return 0
+createPath memoTable visited lastCity    |  Data.Bits.shiftL 1 numCities - 1 == visited = ["0"] -- all visited Return 0
                                             | nextCity == -1 = []
                                             | otherwise = show currentCity : createPath memoTable updatedVisited nextCity
                                                 where  
@@ -163,7 +163,7 @@ createPath memoTable visited currentCity    |  Data.Bits.shiftL 1 numCities - 1 
 
 
 travelSales :: RoadMap -> Path
-travelSales rm = createPath (fillTable adjMatrix (createMemoizationTable (numCities+1) ) 0 0) 0 0
+travelSales rm = createPath (fillTable adjMatrix (createMemoizationTable (numCities+1) ) 0 0) 1 0
                     where
                         adjMatrix = createAdjMatrix rm
                         (_, numCities) = snd (Data.Array.bounds adjMatrix) 
