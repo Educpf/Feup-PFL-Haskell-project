@@ -12,7 +12,7 @@ type Distance = Int
 type AdjList = [(City,[(City,Distance)])]
 type AdjMatrix = Data.Array.Array (Int,Int) (Maybe Distance)
 type DijkstraList = Data.Array.Array Int (Bool, Distance, [Int])
-type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance)
+type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance, Int)
 type RoadMap = [(City,City,Distance)]
 
 
@@ -116,15 +116,19 @@ shortestPath rm origin destiny = dijkstra adjMatrix (createDijkstraTable numCiti
 
 -- 
 
+getNumCities :: AdjMatrix -> Int
+getNumCities matrix = snd (snd (Data.Array.bounds matrix)) + 1
+
+
 fillTable :: AdjMatrix -> MemoizationTable -> Int -> Int -> MemoizationTable
 fillTable matrix table visited origin | storedValue /= Nothing = table -- Value already stored in table, return table
                                         -- all visited besides current
-                                      | Data.Bits.shiftL 1 numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), distanceToZero)] -- All nodes already visited, complete table
-                                      | otherwise = updatedTable Data.Array.// [((visited, origin), Just distance)] -- Get table from children and add entry of 
+                                      | Data.Bits.shiftL 1 numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), (distanceToZero, 0))] -- All nodes already visited, complete table
+                                      | otherwise = updatedTable Data.Array.// [((visited, origin), (Just distance, nextCity))]-- Get table from children and add entry of 
                                         where
-                                            (_, numCities) = snd (Data.Array.bounds matrix)
+                                            numCities = getNumCities matrix
                                             -- Get value stored in memoizationTable for current position
-                                            storedValue = table Data.Array.! (visited, origin)
+                                            (storedValue, nextCalculatedCity) = table Data.Array.! (visited, origin)
                                             -- Make current node visited
                                             updatedVisited = visited Data.Bits..|. Data.Bits.shiftL 1 origin
                                             distanceToZero = matrix Data.Array.! (origin, 0)
@@ -134,38 +138,38 @@ fillTable matrix table visited origin | storedValue /= Nothing = table -- Value 
                                             (updatedTable, distance, nextCity) = foldl (\(accTable, bestDistance, bestI) elem ->  -- Recursive update of tables and find best Distance
                                                                                                         let
                                                                                                             updatedTable = fillTable matrix accTable updatedVisited elem
-                                                                                                            distanceFromNode = updatedTable Data.Array.! (updatedVisited, elem)
+                                                                                                            (distanceFromNode, _) = updatedTable Data.Array.! (updatedVisited, elem)
                                                                                                             distanceToNode = matrix Data.Array.! (origin, elem)
                                                                                                             totalDistance = case (distanceFromNode, distanceToNode) of 
                                                                                                                         (Nothing, _) -> maxBound
                                                                                                                         (_, Nothing) -> maxBound
-                                                                                                                        (Just d1, Just d2) -> d1 + d2
-                                                                                                            in if totalDistance < bestDistance then (updatedTable,totalDistance,elem) else (updatedTable, bestDistance,bestI)) (table,  maxBound, -1) nextNodes
+                                                                                                                        (Just d1, Just d2) -> if distanceFromNode == Just maxBound then maxBound else d1 + d2
+                                                                                                            in if totalDistance < bestDistance then (updatedTable,totalDistance,elem) else (updatedTable, bestDistance,bestI)) (table, maxBound, -1) nextNodes
 
 createMemoizationTable :: Int -> MemoizationTable
-createMemoizationTable size = Data.Array.array ((0, 0), (size ^ 2, size)) [ ((x, y), Nothing) | x <- [0..size^2], y <- [0 .. size]]
+createMemoizationTable size = Data.Array.array ((0, 0), (maxRow, maxColumn)) [ ((x, y), (Nothing, -1)) | x <- [0..maxRow], y <- [0 .. maxColumn]]
+                                where 
+                                    maxColumn = size - 1 
+                                    maxRow = (2 ^ size) -1
 
-createPath :: MemoizationTable -> Int -> Path
-createPath memoTable visited |  Data.Bits.shiftL 1 numCities - 1 == visited = ["0"]-- all visited Return 0
-                             | otherwise = show bestCity : createPath memoTable updatedVisited
-                                where  
-                                    (_, numCities) = snd ( Data.Array.bounds memoTable)
-                                    line = [memoTable Data.Array.! (visited, i) | i <- [0..]]
-                                    (i, bestCity, distance) = foldl (\(i, bestCity, bestDistance) city ->
-                                                                    let 
-                                                                        distance =  memoTable Data.Array.! (visited, city)
-                                                                        changedDistance = case distance of
-                                                                                    Nothing -> maxBound
-                                                                                    Just d -> d
-                                                                        in if distance < bestDistance then (i+1, city, distance) else (i+1, bestCity, bestDistance)) (0, -1, maxBound) line
-                                    updatedVisited = visited Data.Bits..|. Data.Bits.shiftL 1 bestCity
+createPath :: MemoizationTable -> Int -> Int -> Path
+createPath memoTable visited currentCity    |  Data.Bits.shiftL 1 numCities - 1 == visited = ["0"] -- all visited Return 0
+                                            | nextCity == -1 = []
+                                            | otherwise = show currentCity : createPath memoTable updatedVisited nextCity
+                                                where  
+                                                    numCities = snd (snd (Data.Array.bounds memoTable)) + 1
+                                                    (_, nextCity) = memoTable Data.Array.! (visited, currentCity)
+                                                    updatedVisited = visited Data.Bits..|. Data.Bits.shiftL 1 currentCity
+
 
 travelSales :: RoadMap -> Path
-travelSales = undefined
--- travelSales rm = getPath (fillTable adjMAtrix (createMemoizationTable numCities) 0 0)
---                 where
---                     adjMatrix = createAdjMatrix rm
---                     (_, numCities) = snd (Data.Array.bounds adjMatrix)
+travelSales rm = createPath (fillTable adjMatrix (createMemoizationTable (numCities+1) ) 0 0) 0 0
+                    where
+                        adjMatrix = createAdjMatrix rm
+                        (_, numCities) = snd (Data.Array.bounds adjMatrix) 
+
+
+
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
@@ -182,3 +186,6 @@ gTest3 = [("0","1",4),("2","3",2)]
 
 gTest4 :: RoadMap
 gTest4 = [("0","1",10),("0","2",15),("1","2",35),("1","3",25),("2","3",20)]
+
+gTest6 :: RoadMap
+gTest6 = [("0", "1", 6), ("0", "2", 6), ("0", "3", 46), ("0", "4", 31), ("0", "5", 51), ("0", "6", 70), ("0", "7", 18), ("0", "8", 29), ("0", "9", 63), ("0", "10", 18), ("0", "11", 78), ("0", "12", 69), ("0", "13", 43), ("0", "14", 36), ("0", "15", 6), ("0", "16", 51), ("0", "17", 0), ("0", "18", 65), ("0", "19", 86), ("1", "2", 25), ("1", "3", 87), ("1", "4", 99), ("1", "5", 40), ("1", "6", 82), ("1", "7", 61), ("1", "8", 29), ("1", "9", 18), ("1", "10", 91), ("1", "11", 58), ("1", "12", 31), ("1", "13", 91), ("1", "14", 56), ("1", "15", 45), ("1", "16", 42), ("1", "17", 27), ("1", "18", 91), ("1", "19", 6), ("2", "3", 15), ("2", "4", 15), ("2", "5", 43), ("2", "6", 63), ("2", "7", 29), ("2", "8", 18), ("2", "9", 63), ("2", "10", 77), ("2", "11", 35), ("2", "12", 90), ("2", "13", 40), ("2", "14", 71), ("2", "15", 45), ("2", "16", 65), ("2", "17", 82), ("2", "18", 39), ("2", "19", 19), ("3", "4", 69), ("3", "5", 72), ("3", "6", 49), ("3", "7", 89), ("3", "8", 6), ("3", "9", 72), ("3", "10", 45), ("3", "11", 52), ("3", "12", 46), ("3", "13", 7), ("3", "14", 80), ("3", "15", 99), ("3", "16", 98), ("3", "17", 92), ("3", "18", 77), ("3", "19", 2), ("4", "5", 3), ("4", "6", 24), ("4", "7", 57), ("4", "8", 95), ("4", "9", 59), ("4", "10", 41), ("4", "11", 80), ("4", "12", 0), ("4", "13", 5), ("4", "14", 25), ("4", "15", 48), ("4", "16", 13), ("4", "17", 57), ("4", "18", 61), ("4", "19", 99), ("5", "6", 21), ("5", "7", 75), ("5", "8", 33), ("5", "9", 83), ("5", "10", 92), ("5", "11", 59), ("5", "12", 80), ("5", "13", 25), ("5", "14", 8), ("5", "15", 73), ("5", "16", 19), ("5", "17", 9), ("5", "18", 84), ("5", "19", 68), ("6", "7", 91), ("6", "8", 10), ("6", "9", 27), ("6", "10", 92), ("6", "11", 49), ("6", "12", 54), ("6", "13", 84), ("6", "14", 79), ("6", "15", 5), ("6", "16", 14), ("6", "17", 87), ("6", "18", 66), ("6", "19", 53), ("7", "8", 47), ("7", "9", 1), ("7", "10", 78), ("7", "11", 53), ("7", "12", 79), ("7", "13", 94), ("7", "14", 99), ("7", "15", 14), ("7", "16", 47), ("7", "17", 90), ("7", "18", 15), ("7", "19", 46), ("8", "9", 78), ("8", "10", 69), ("8", "11", 42), ("8", "12", 66), ("8", "13", 95), ("8", "14", 10), ("8", "15", 37), ("8", "16", 89), ("8", "17", 73), ("8", "18", 83), ("8", "19", 47), ("9", "10", 20), ("9", "11", 42), ("9", "12", 63), ("9", "13", 19), ("9", "14", 83), ("9", "15", 6), ("9", "16", 62), ("9", "17", 53), ("9", "18", 42), ("9", "19", 52), ("10", "11", 84), ("10", "12", 52), ("10", "13", 30), ("10", "14", 14), ("10", "15", 27), ("10", "16", 58), ("10", "17", 76), ("10", "18", 31), ("10", "19", 5), ("11", "12", 0), ("11", "13", 61), ("11", "14", 49), ("11", "15", 13), ("11", "16", 65), ("11", "17", 24), ("11", "18", 70), ("11", "19", 90), ("12", "13", 70), ("12", "14", 60), ("12", "15", 25), ("12", "16", 81), ("12", "17", 99), ("12", "18", 51), ("12", "19", 29), ("13", "14", 65), ("13", "15", 63), ("13", "16", 28), ("13", "17", 30), ("13", "18", 57), ("13", "19", 23), ("14", "15", 63), ("14", "16", 81), ("14", "17", 4), ("14", "18", 66), ("14", "19", 40), ("15", "16", 48), ("15", "17", 82), ("15", "18", 72), ("15", "19", 28), ("16", "17", 17), ("16", "18", 30), ("16", "19", 51), ("17", "18", 99), ("17", "19", 34), ("18", "19", 29)]
