@@ -6,25 +6,32 @@ import qualified Data.Bits
 
 -- Uncomment the some/all of the first three lines to import the modules, do not change the code of these lines.
 
+-- TODO
+-- When refering to City but is Int maybe say it!!!!
+
+
 type City = String
 type Path = [City]
 type Distance = Int
+type RoadMap = [(City,City,Distance)]
 type AdjList = [(City,[(City,Distance)])]
 type AdjMatrix = Data.Array.Array (Int,Int) (Maybe Distance)
-type DijkstraList = Data.Array.Array Int (Bool, Distance, [Int])
+
+-- Store City information related to Dijkstra Algorithm
+type DijkstraList = Data.Array.Array Int (Bool, Distance, [Int]) -- (visited, distanceFromOrigin, [PreviousCity])
+-- Store calculated distances of TSP problem
 type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance)
-type RoadMap = [(City,City,Distance)]
 
 {-|
-    The 'convertToAdjList' function is an auxiliary function that has the goal of convert a 'RoadMap' to an Adjacent List
+    Auxiliar function that converts a 'RoadMap' to an Adjacent List
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' to convert
 
     Return:
 
-        - The function returns and 'AdjList'
+        - 'AdjList' - the conversion result
     
     Complexity:
 
@@ -34,15 +41,15 @@ convertToAdjList :: RoadMap -> AdjList
 convertToAdjList rm = [(city, adjacent rm city) | city <- cities rm]
 
 {-|
-    The 'createAdjMatrix' function is an auxiliary function that creates a matrix from a certain 'RoadMap'
+    Auxiliar function that converts a 'RoadMap' to an Adjacent Matrix
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' to convert
 
     Return:
 
-        - The function returns a 'AdjMatrix
+        - 'AdjMatrix' - the conversion result 
 
     Complexity:
 
@@ -53,15 +60,15 @@ createAdjMatrix rm = Data.Array.array ((0,0), (ncities,ncities)) [((x,y),distanc
                     where ncities = length (cities rm) -1
 
 {-|
-    The 'cities' function has the goal of, for a given 'RoadMap', calculate the cities in it
+    Computes the list of unique cities in a given 'RoadMap'
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' containing cities and their connections
 
     Return:
 
-        - The function returns a list of the unique cities
+        - ['City'] - a list of the unique cities
 
     Complexity:
         
@@ -71,19 +78,19 @@ cities :: RoadMap -> [City]
 cities = Data.List.nub . foldr (\ (c1,c2,_) acc -> c1 : c2 : acc) []
 
 {-|
-    The 'areAdjacent' function has the goal of see if two cities are directly connected for a certain 'RoadMap'
+    Checks if two cities are directly connected in a given 'RoadMap'
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' containing cities and their connections
 
-        - 'c1' - The first inputed 'City' 
+        - 'c1' - The first 'City' 
 
-        - 'c2' - The second inputed 'City'
+        - 'c2' - The second 'City'
 
     Return:
 
-        - The function returns a 'Bool'. 'True' if the cities are connected and 'False' otherwise
+        - 'Bool' - 'True' if the cities are connected and 'False' otherwise 
 
     Complexity:
 
@@ -93,21 +100,22 @@ areAdjacent :: RoadMap -> City -> City -> Bool
 areAdjacent rm c1 c2 = or [(c1==x && c2==y) || (c2==x && c1==y) | (x,y,_) <- rm]
 -- areAdjacent rm c1 c2 = any (\(x,y,_) -> (c1==x && c2==y) || (c2==x && c1==y)) rm 
 
+
 {-|
-    The 'distance' function has the goal of calculate the distance between two cities if they are directly connected
+    Compute the distance between two cities if they are directly connected
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' containing cities and their connections
 
-        - 'c1' - The first inputed 'City' 
+        - 'c1' - The first 'City' 
 
-        - 'c2' - The second inputed 'City'
+        - 'c2' - The second 'City'
 
     Return:
 
-        - The function returns a Maybe Distance value. 'Nothing' if the cities are not directly connected.
-            Otherwise, Just x, where x is the distance between the cities
+        - 'Maybe' 'Distance' - 'Nothing' if the cities are not directly connected.
+            Otherwise, 'Just' 'x', where 'x' is the distance between the cities
 
     Complexity:
 
@@ -117,17 +125,19 @@ distance :: RoadMap -> City -> City -> Maybe Distance
 distance rm c1 c2 = fmap (\(_,_,d) -> d) (Data.List.find (\(x,y,_) -> (c1==x && c2==y) || (c2==x && c1==y)) rm)
 
 {-|
-    The 'adjacent' function has the goal of calculate the adjacent cities and respective distances for a given city
+    Compute the adjacent cities and respective distances for a given 'City' in a 'RoadMap'
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' containing cities and their connections
 
-        - 'c' - The inputed 'City' 
+        - 'c' - the 'City' to analyse
 
     Return:
 
-        - The function returns a list with tuples of two arguments, the first is the city to whether it directly connects and the second one the respective distance
+        - [(City, Distance)] - list of tuples, where each one represents a connection to an adjacent city and contains:
+        -- A 'City' - the adjacent city
+        -- A 'Distance' - the distance to that city
 
     Complexity:
 
@@ -138,18 +148,18 @@ adjacent :: RoadMap -> City -> [(City,Distance)]
 adjacent rm c = [ if  x == c then (y,d) else (x, d) | (x,y,d) <- rm, x == c || y == c]
 
 {-|
-    The 'pathDistance' function has the goal of calculate the total distance of a 'Path', by calculating the distance from a city to the next one in the path
+    Computes the total distance of a 'Path', by iteratively adding up the distance of a city to the next 
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' containing cities and their connections
 
-        - 'p' - The inputed 'Path' 
+        - 'p' - the 'Path' to calculate
 
     Return:
 
-        - The function returns a Maybe Distance value. 'Nothing' if some connection between cities does not exist.
-             Otherwise, Just x, where x is the sum of the distances between the cities
+        - 'Maybe' 'Distance' - 'Nothing' if 'Path' is invalid for the given 'RoadMap'
+             Otherwise, 'Just' 'x', where 'x' is the total length of the 'Path'
 
 
     Complexity:
@@ -278,16 +288,51 @@ getDijkstraPath list dest  | null back = [[show dest]]
                             | otherwise =  map ( ++ [show dest] ) (foldr (\elem acc -> acc ++ getDijkstraPath list elem) [] back)
                                 where (visited,_,back) = list Data.Array.! dest
 
+
+{-|
+    Auxiliar function that selects, for a given 'DijkstraList' what is the unvisited 'City' with the smallest distance from the origin
+
+    Parameters:
+
+        - 'list' - 'DijkstraList' to perform the search for the Node
+
+    Return:
+
+        - 'Int' - the selected City. Returns -1 if all cities are already visited.
+
+    Complexity:
+
+        - 'O(n)' - where 'n' is the number of Cities stored in the 'DijkstraList'
+-}
 getSmallerUnvisited :: DijkstraList -> Int
 getSmallerUnvisited list = result
                 where (_, result, _) = foldl (\(i, bi, bd) (v, d, _)  -> if not v && (d < bd) then (i+1, i, d) else (i+1, bi, bd)) (0, -1, maxBound) (Data.Array.elems list)
 
+
+{-|
+    Auxiliar function that, given an origin and destiny city, updates the destiny city entry in a 'DijkstraList', based on the connection between the two
+
+    Parameters:
+
+        - 'matrix' - the 'AdjMatrix' with the city connections
+        - 'list' - the 'DijkstraList' to update
+        - 'origin' - the origin 'City' as 'Int'
+        - 'dest' - the destiny 'City' as 'Int'
+
+    Return:
+
+        - '(Bool, Distance, [Int])' - the updated destiny city entry of the 'DijkstraList'
+
+    Complexity:
+
+        - 'O(1)'
+-}
 updateConnection :: AdjMatrix -> DijkstraList -> Int -> Int -> (Bool, Distance, [Int]) -- Only one element
-updateConnection matrix list origin dest | origin == dest = (True, d_o, p_o)
-                                         | distance == Nothing = (v_d,d_d,p_d)
-                                         | newDistance <  d_d = (v_d, newDistance, [origin])
-                                         | newDistance ==  d_d = (v_d, d_d, origin : p_d)
-                                         | otherwise = (v_d, d_d, p_d)
+updateConnection matrix list origin dest | origin == dest = (True, d_o, p_o)   -- comparing the same city, just mark it as visited
+                                         | distance == Nothing = (v_d,d_d,p_d)  -- cities are not connected, don't change entry
+                                         | newDistance <  d_d = (v_d, newDistance, [origin]) -- better connection, overwrite distance and parent city
+                                         | newDistance ==  d_d = (v_d, d_d, origin : p_d) -- connection as good, add origin as new parent city
+                                         | otherwise = (v_d, d_d, p_d) -- worst connection, don't change entry
                                             where
                                                 (v_o,d_o,p_o) = list Data.Array.! origin
                                                 (v_d,d_d,p_d) = list Data.Array.! dest
@@ -296,34 +341,121 @@ updateConnection matrix list origin dest | origin == dest = (True, d_o, p_o)
                                                                 Nothing -> d_o
                                                                 Just num -> num + d_o
 
+
+{-|
+    Auxiliar function that, given an origin city, updates all the 'DijkstraList' entries
+
+    Parameters:
+
+        - 'matrix' - the 'AdjMatrix' with the city connections
+        - 'list' - the 'DijkstraList' to update
+        - 'city' - the origin 'City' as 'Int'
+
+    Return:
+
+        - 'DijkstraList' - the updated 'DijkstraList' based on the given 'City'
+
+    Complexity:
+
+        - 'O(n)' - where 'n' is the total number of cities
+-}
 updateConnections :: AdjMatrix -> DijkstraList -> Int -> DijkstraList
-updateConnections con list node = Data.Array.array (0, maxI) [ (i, updateConnection con list node i) | i <- [0..maxI]]
+updateConnections matrix list city = Data.Array.array (0, maxI) [ (i, updateConnection matrix list city i) | i <- [0..maxI]] 
                             where (_, maxI)= Data.Array.bounds list
 
+
+{-|
+    Auxiliar function that computes all the shortest paths, using Dijkstra Algorithm, between an origin and destiny cities of a given 'AdjMatrix'
+
+    Parameters:
+
+        - 'matrix' - the 'RoadMap' containing cities and their connections
+        - 'list' - the 'DijkstraList' used to store algorithm data
+        - 'origin'- the destiny 'City' as 'Int'
+        - 'destiny'- the destiny 'City' as 'Int'
+
+    Return:
+
+        - '[Path]' - the list of all possible different paths connecting both cities
+
+    Complexity:
+
+        - 'O(n^2)' - where 'n' is the total number of cities
+-}
 dijkstra :: AdjMatrix -> DijkstraList -> Int -> Int -> [Path]
-dijkstra con list o d | nextNode == -1 = getDijkstraPath list d
-                      | otherwise = dijkstra con updatedList o d-- Usar o getsmallerUnvisited já pra me dar se todos foram visitados ou não!! Se retornar -1 então são todos visitados!!!
-                            where
-                                updatedList = updateConnections con list nextNode
-                                nextNode = getSmallerUnvisited list
+dijkstra matrix list origin destiny | nextNode == -1 = getDijkstraPath list destiny -- all cities visited, compute path
+                                    | otherwise = dijkstra matrix updatedList origin destiny -- otherwise, recursively call the function
+                                    where
+                                        nextNode = getSmallerUnvisited list -- get next city to process
+                                        updatedList = updateConnections matrix list nextNode -- update DijkstraList based on the selected city
 
 
+{-|
+    Computes all the shortest paths between an origin and destiny cities of a given 'RoadMap'
+
+    Parameters:
+
+        - 'rm' - the 'RoadMap' containing cities and their connections
+        - 'origin' - the origin 'City'
+        - 'destiny'- the destiny 'City'
+
+    Return:
+
+        - '[Path]' - the list of all possible different paths connecting both cities
+
+    Complexity:
+
+        - 'O(n^2)' - where 'n' is the total number of cities
+-}
 shortestPath :: RoadMap -> City -> City -> [Path]
-shortestPath rm origin destiny = dijkstra adjMatrix (createDijkstraTable numCities (read origin)) (read origin) (read destiny)
+shortestPath rm origin destiny = dijkstra adjMatrix (createDijkstraTable numCities (read origin)) (read origin) (read destiny) -- get Paths with dijkstra Algorithm
                                     where adjMatrix = createAdjMatrix rm
                                           (_, numCities) = snd (Data.Array.bounds adjMatrix)
 
 -- TRAVEL SALES
 
+
+{-|
+    Auxiliar function to get the number of cities in a given 'AdjMatrix'
+
+    Parameters:
+
+        - 'matrix' - the 'AdjMatrix' of the connections bettwen cities
+
+    Return:
+
+        - 'Int' - the number of cities
+
+    Complexity:
+
+        - 'O(1)' 
+-}
 getNumCities :: AdjMatrix -> Int
 getNumCities matrix = snd (snd (Data.Array.bounds matrix)) + 1
 
 
+{-|
+    Auxiliar function that recursively fills up a given 'MemoizationTable' for TSP, for a given 'AdjMatrix'
+
+    Parameters:
+
+        - 'matrix' - the 'AdjMatrix' of the connections bettwen cities
+        - 'table' - the 'MemoizationTable' to fill 
+        - 'visited' - an 'Int', where each bit represents whether a city is visited or not
+        - 'origin' - the current City being processed
+
+    Return:
+
+        - 'MemoizationTable' - the result table
+
+    Complexity:
+
+        - 'O(n^2 * 2^n)' 
+-}
 fillTable :: AdjMatrix -> MemoizationTable -> Int -> Int -> MemoizationTable
 fillTable matrix table visited origin | storedValue /= Nothing = table -- Value already stored in table, return table
-                                        -- all visited besides current
-                                      | Data.Bits.shiftL 1 numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), distanceToZero)] -- All nodes already visited, complete table
-                                      | otherwise = updatedTable Data.Array.// [((visited, origin), Just distance)]-- Get table from children and add entry of 
+                                      | Data.Bits.shiftL 1 numCities - 1 == updatedVisited = table Data.Array.// [((visited, origin), distanceToZero)] -- all visited besides current
+                                      | otherwise = updatedTable Data.Array.// [((visited, origin), Just distance)] -- Get table updated by descendant and add entry 
                                         where
                                             numCities = getNumCities matrix
                                             -- Get value stored in memoizationTable for current position
@@ -333,24 +465,66 @@ fillTable matrix table visited origin | storedValue /= Nothing = table -- Value 
                                             distanceToZero = matrix Data.Array.! (origin, 0)
                                             -- Get unvisited nodes connected to current node
                                             nextNodes = [i | i <- [0..numCities - 1], (Data.Bits.shiftL 1 i Data.Bits..&. updatedVisited) == 0, (matrix Data.Array.! (origin, i)) /= Nothing]
-                                            -- Get memoizationTable updated by descendants and the best next city to follow 
-                                            (updatedTable, distance, nextCity) = foldl (\(accTable, bestDistance, bestI) elem ->  -- Recursive update of tables and find best Distance
+                                            -- Get memoizationTable updated by descendants and the one with the smaller distance (the best one)
+                                            (updatedTable, distance, nextCity) = foldl (\(accTable, bestDistance, bestI) elem ->  -- Recursively update table and find best descendant
                                                                                                         let
-                                                                                                            updatedTable = fillTable matrix accTable updatedVisited elem
-                                                                                                            distanceFromNode = updatedTable Data.Array.! (updatedVisited, elem)
-                                                                                                            distanceToNode = matrix Data.Array.! (origin, elem)
-                                                                                                            totalDistance = case (distanceFromNode, distanceToNode) of
+                                                                                                            updatedTable = fillTable matrix accTable updatedVisited elem -- table updated by child city
+                                                                                                            distanceFromNode = updatedTable Data.Array.! (updatedVisited, elem) -- distance from the child city forward
+                                                                                                            distanceToNode = matrix Data.Array.! (origin, elem)  -- distance between current city and the child
+                                                                                                            totalDistance = case (distanceFromNode, distanceToNode) of -- handle nothing and maxBound values
                                                                                                                         (Nothing, _) -> maxBound
                                                                                                                         (_, Nothing) -> maxBound
                                                                                                                         (Just d1, Just d2) -> if distanceFromNode == Just maxBound then maxBound else d1 + d2
                                                                                                             in if totalDistance < bestDistance then (updatedTable,totalDistance,elem) else (updatedTable, bestDistance,bestI)) (table, maxBound, -1) nextNodes
 
+
+
+
+
+{-|
+    Auxiliary function that creates an empty 'MemoizationTable'
+    
+    Note: 'DijkstraList' is an array with all values initialized to (False, maxbound, []), except the origin that is initialized as (False, 0, [])
+
+    Parameters:
+
+        - 'size' - the number of cities to store in MemoizationTable as 'Int' 
+
+    Return:
+
+        - 'MemoizationTable' - the created table, with all values as 'Nothing' with dimensions '(2^size)-1'x'size-1'
+
+    Complexity:
+
+        - O(n^2 * n)
+
+-}
 createMemoizationTable :: Int -> MemoizationTable
 createMemoizationTable size = Data.Array.array ((0, 0), (maxRow, maxColumn)) [ ((x, y), Nothing) | x <- [0..maxRow], y <- [0 .. maxColumn]]
                                 where 
                                     maxColumn = size - 1 
                                     maxRow = (2 ^ size) -1
 
+
+
+{-|
+    Auxiliary function that returns a TSP based on a given 'MemoizationTable'
+    
+    Parameters:
+
+        - 'matrix' - the 'AdjMatrix' of the connections bettwen cities
+        - 'memoTable' - the filled 'MemoizationTable' 
+        - 'visited' - an 'Int', where each bit represents whether a city is visited or not
+        - 'currentCity' - the city being currently analysed
+    Return:
+
+        - 'Path' - a possible path that solves the TSP for the given matrix
+
+    Complexity:
+
+        - O(n^2) - where n is the total number of cities 
+
+-}
 createPath :: AdjMatrix -> MemoizationTable -> Int -> Int -> Path -- update create path
 createPath matrix memoTable visited currentCity     |  Data.Bits.shiftL 1 numCities - 1 == updatedVisited = show currentCity : ["0"] -- all visited Return 0
                                                     | nextCity == -1 = []
