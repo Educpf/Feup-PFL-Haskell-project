@@ -15,59 +15,264 @@ type DijkstraList = Data.Array.Array Int (Bool, Distance, [Int])
 type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance)
 type RoadMap = [(City,City,Distance)]
 
+{-|
+    The 'convertToAdjList' function is an auxiliary function that has the goal of convert a 'RoadMap' to an Adjacent List
 
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+    Return:
+
+        - The function returns and 'AdjList'
+    
+    Complexity:
+
+
+-}
 convertToAdjList :: RoadMap -> AdjList
 convertToAdjList rm = [(city, adjacent rm city) | city <- cities rm]
 
+{-|
+    The 'createAdjMatrix' function is an auxiliary function that creates a matrix from a certain 'RoadMap'
 
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+    Return:
+
+        - The function returns a 'AdjMatrix
+
+    Complexity:
+
+
+-}
+createAdjMatrix :: RoadMap -> AdjMatrix
+createAdjMatrix rm = Data.Array.array ((0,0), (ncities,ncities)) [((x,y),distance rm (show x) (show y))|  x <- [0..ncities], y <- [0..ncities]]
+                    where ncities = length (cities rm) -1
+
+{-|
+    The 'cities' function has the goal of, for a given 'RoadMap', calculate the cities in it
+
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+    Return:
+
+        - The function returns a list of the unique cities
+
+    Complexity:
+        
+
+-}
 cities :: RoadMap -> [City]
 cities = Data.List.nub . foldr (\ (c1,c2,_) acc -> c1 : c2 : acc) []
 
+{-|
+    The 'areAdjacent' function has the goal of see if two cities are directly connected for a certain 'RoadMap'
+
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+        - 'c1' - The first inputed 'City' 
+
+        - 'c2' - The second inputed 'City'
+
+    Return:
+
+        - The function returns a 'Bool'. 'True' if the cities are connected and 'False' otherwise
+
+    Complexity:
+
+
+-}
 areAdjacent :: RoadMap -> City -> City -> Bool
 areAdjacent rm c1 c2 = or [(c1==x && c2==y) || (c2==x && c1==y) | (x,y,_) <- rm]
 -- areAdjacent rm c1 c2 = any (\(x,y,_) -> (c1==x && c2==y) || (c2==x && c1==y)) rm 
 
+{-|
+    The 'distance' function has the goal of calculate the distance between two cities if they are directly connected
+
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+        - 'c1' - The first inputed 'City' 
+
+        - 'c2' - The second inputed 'City'
+
+    Return:
+
+        - The function returns a Maybe Distance value. 'Nothing' if the cities are not directly connected.
+            Otherwise, Just x, where x is the distance between the cities
+
+    Complexity:
+
+
+-}
 distance :: RoadMap -> City -> City -> Maybe Distance
 distance rm c1 c2 = fmap (\(_,_,d) -> d) (Data.List.find (\(x,y,_) -> (c1==x && c2==y) || (c2==x && c1==y)) rm)
 
+{-|
+    The 'adjacent' function has the goal of calculate the adjacent cities and respective distances for a given city
+
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+        - 'c' - The inputed 'City' 
+
+    Return:
+
+        - The function returns a list with tuples of two arguments, the first is the city to whether it directly connects and the second one the respective distance
+
+    Complexity:
+
+
+-}
 adjacent :: RoadMap -> City -> [(City,Distance)]
 -- adjacent rm c = [ (y,d)  | (x,y,d) <- rm, x == c] ++ [(x,d)| (x,y,d) <- rm, y == c]
 adjacent rm c = [ if  x == c then (y,d) else (x, d) | (x,y,d) <- rm, x == c || y == c]
 
+{-|
+    The 'pathDistance' function has the goal of calculate the total distance of a 'Path', by calculating the distance from a city to the next one in the path
+
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+        - 'p' - The inputed 'Path' 
+
+    Return:
+
+        - The function returns a Maybe Distance value. 'Nothing' if some connection between cities does not exist.
+             Otherwise, Just x, where x is the sum of the distances between the cities
+
+
+    Complexity:
+
+
+-}
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance rm p = foldr (\ v acc -> case (v,acc) of
                                             (Nothing,_) -> Nothing
                                             (_,Nothing) -> Nothing
                                             (Just x,Just tot) -> Just (x + tot) ) (Just 0) [distance rm x y | (x,y) <- zip p (tail p)]
 
+{-|
+    The 'rome' function has the goal of calculate the cities with the highest number of roads connecting to them 
 
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+    Return:
+
+        - The function returns a list of cities, which are the cities with highest degree
+
+    Complexity:
+
+
+-}
 rome :: RoadMap -> [City]
---  rome rm =
---     let degrees = [(x,Data.List.length [c | c <- foldr (\ (c1,c2,_) acc -> c1 : c2 : acc) [] rm, c == x ]) | x <- cities rm]
---         max = Data.List.maximum (map snd degrees)
---     in [c | (c,d) <- degrees, d == max]
 rome rm = [ c | (c, d) <- cityDegree, d == maxDegree ]
         where
             cityDegree = map (\(c, l)-> (c, Data.List.length l)) (convertToAdjList rm)
             maxDegree = Data.List.maximum (map snd cityDegree)
 
+{-|
+    The 'dfs' function is an auxiliary function with the goal of calculate which cities can be visited for a given 'AdjList'
 
+    Parameters:
+
+        - 'al' - Represents the 'AdjList' that the function receives as input
+
+        - 'c' - Represents the current city analysing
+
+        - 'visited' - A list with the visited cities, in order to keep track of them
+
+    Return:
+
+        - The function returns a list of cities, which are the cities that the dfs can reach from a starting city
+
+    Complexity:
+
+
+-}
 -- array ! 2
-
 dfs :: AdjList -> City -> [City] -> [City]
 dfs al c visited    |  c `elem` visited = visited
                     | otherwise = foldr (dfs al) (c : visited) children
         where
             children =  head [ map fst d | (city, d) <- al, city == c]
 
+{-|
+    The 'isStronglyConnected' function has the goal of calculate if a 'roadMap' is strongly connected
 
+    Parameters:
+
+        - 'rm' - Represents the 'RoadMap' that the function receives as input
+
+    Return:
+
+        - The function returns a 'Bool'. 'True' if all the cities are visited by the dfs, proving that the 'RoadMap' is strongly connected.
+            Otherwise, returns 'False'
+
+    Complexity:
+
+
+-}
 isStronglyConnected :: RoadMap -> Bool
 isStronglyConnected rm = length (dfs (convertToAdjList rm) (head (cities rm)) []) == totalCity
                         where totalCity = length (cities rm)
 
 
--- DIJKSTRA
+-- SHORTEST PATH
 
+{-|
+    The 'createDijkstraTable' function is an auxiliary funtion with the goal of create a 'DijkstraList'. The objective is to help the execution of dijkstra algorithm.
+    
+    Note: 'DijkstraList' is an array with all values initialized to (False, maxbound, []), except the origin that is initialized as (False, 0, [])
+
+    Parameters:
+
+        - 'len' - Represents size that the table shoul have
+
+        - 'origin' - It's the origin node of the shortest path
+
+    Return:
+
+        - The function returns a 'DijkstraList', properly initialized
+
+    Complexity:
+
+
+-}
+createDijkstraTable :: Int -> Int -> DijkstraList
+createDijkstraTable len origin = Data.Array.array (0,len) [if i == origin then (i,(False, 0, [])) else(i,(False, maxBound, [])) | i <- [0..len]]
+
+
+{-|
+    The 'getDijkstraPath' function is an auxiliary funtion with the purpose of, from a 'DijkstraList' completed and a destiny return the shortest path 
+
+    Parameters:
+
+        - 'list' - 'DijkstraList' to perform the search of the path
+
+        - 'dest' - Destination node of the path 
+
+    Return:
+
+        - The function returns a list of lists of cities, which are the differents paths that exist, 
+            since it can be more than one path because they can have the same distance
+
+    Complexity:
+
+
+-}
 getDijkstraPath :: DijkstraList -> Int -> [[City]] -- Use cities as Int
 getDijkstraPath list dest  | null back = [[show dest]]
                             | otherwise =  map ( ++ [show dest] ) (foldr (\elem acc -> acc ++ getDijkstraPath list elem) [] back)
@@ -102,19 +307,13 @@ dijkstra con list o d | nextNode == -1 = getDijkstraPath list d
                                 updatedList = updateConnections con list nextNode
                                 nextNode = getSmallerUnvisited list
 
-createAdjMatrix :: RoadMap -> AdjMatrix
-createAdjMatrix rm = Data.Array.array ((0,0), (ncities,ncities)) [((x,y),distance rm (show x) (show y))|  x <- [0..ncities], y <- [0..ncities]]
-                    where ncities = length (cities rm) -1
-
-createDijkstraTable :: Int -> Int -> DijkstraList
-createDijkstraTable len origin = Data.Array.array (0,len) [if i == origin then (i,(False, 0, [])) else(i,(False, maxBound, [])) | i <- [0..len]]
 
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath rm origin destiny = dijkstra adjMatrix (createDijkstraTable numCities (read origin)) (read origin) (read destiny)
                                     where adjMatrix = createAdjMatrix rm
                                           (_, numCities) = snd (Data.Array.bounds adjMatrix)
 
--- 
+-- TRAVEL SALES
 
 getNumCities :: AdjMatrix -> Int
 getNumCities matrix = snd (snd (Data.Array.bounds matrix)) + 1
