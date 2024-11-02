@@ -34,7 +34,7 @@ type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance)
         - 'AdjList' - the conversion result
     
     Complexity:
-
+        - O(n^2 + n*m), where n is the number of elements in the roadmap and m the number of cities 
 
 -}
 convertToAdjList :: RoadMap -> AdjList
@@ -52,8 +52,8 @@ convertToAdjList rm = [(city, adjacent rm city) | city <- cities rm]
         - 'AdjMatrix' - the conversion result 
 
     Complexity:
-
-
+        - O(n^2 + m^2 * n), where n is the number of elements in the roadmap and m is the number of different cities in the roadmap
+            cities | calc cities * distnace
 -}
 createAdjMatrix :: RoadMap -> AdjMatrix
 createAdjMatrix rm = Data.Array.array ((0,0), (ncities,ncities)) [((x,y),distance rm (show x) (show y))|  x <- [0..ncities], y <- [0..ncities]]
@@ -71,7 +71,7 @@ createAdjMatrix rm = Data.Array.array ((0,0), (ncities,ncities)) [((x,y),distanc
         - ['City'] - a list of the unique cities
 
     Complexity:
-        
+        - O(n^2), where n is the number of elements in the roadmap
 
 -}
 cities :: RoadMap -> [City]
@@ -93,7 +93,7 @@ cities = Data.List.nub . foldr (\ (c1,c2,_) acc -> c1 : c2 : acc) []
         - 'Bool' - 'True' if the cities are connected and 'False' otherwise 
 
     Complexity:
-
+        - O(n), where n is the number of elements in the roadmap
 
 -}
 areAdjacent :: RoadMap -> City -> City -> Bool
@@ -118,7 +118,7 @@ areAdjacent rm c1 c2 = or [(c1==x && c2==y) || (c2==x && c1==y) | (x,y,_) <- rm]
             Otherwise, 'Just' 'x', where 'x' is the distance between the cities
 
     Complexity:
-
+        - O(n), where n is the number of elements in the roadmap
 
 -}
 distance :: RoadMap -> City -> City -> Maybe Distance
@@ -140,7 +140,7 @@ distance rm c1 c2 = fmap (\(_,_,d) -> d) (Data.List.find (\(x,y,_) -> (c1==x && 
         -- A 'Distance' - the distance to that city
 
     Complexity:
-
+        - O(n), where n is the number of elements in the roadmap
 
 -}
 adjacent :: RoadMap -> City -> [(City,Distance)]
@@ -163,6 +163,7 @@ adjacent rm c = [ if  x == c then (y,d) else (x, d) | (x,y,d) <- rm, x == c || y
 
 
     Complexity:
+        - O(n * m), where n is the number of elements in the roadmap and m is number of elements in the path
 
 
 -}
@@ -173,17 +174,18 @@ pathDistance rm p = foldr (\ v acc -> case (v,acc) of
                                             (Just x,Just tot) -> Just (x + tot) ) (Just 0) [distance rm x y | (x,y) <- zip p (tail p)]
 
 {-|
-    The 'rome' function has the goal of calculate the cities with the highest number of roads connecting to them 
+    Computes the cities with the highest number of roads connecting to them
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' containing cities and their connections
 
     Return:
 
-        - The function returns a list of cities, which are the cities with highest degree
+        - [City] - list of cities, where each one represents a 'City' with the highest calculated degree
 
     Complexity:
+        - O(n * m), where n is the number of elements in the roadmap and m is the number of different cities in the roadmap
 
 
 -}
@@ -198,18 +200,18 @@ rome rm = [ c | (c, d) <- cityDegree, d == maxDegree ]
 
     Parameters:
 
-        - 'al' - Represents the 'AdjList' that the function receives as input
+        - 'al' - the 'AdjList' containing cities and their connections to other cities, including the distance
 
-        - 'c' - Represents the current city analysing
+        - 'c' -  the city to analyse
 
-        - 'visited' - A list with the visited cities, in order to keep track of them
+        - 'visited' - list with the visited cities, in order to keep track of them
 
     Return:
 
-        - The function returns a list of cities, which are the cities that the dfs can reach from a starting city
+        - [City] - list of cities, which are the cities that the dfs can reach from a starting city (visited cities)
 
     Complexity:
-
+        - O(V + E), where V is the number of cities and E is the number of connections
 
 -}
 -- array ! 2
