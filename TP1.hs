@@ -226,7 +226,7 @@ dfs al c visited    |  c `elem` visited = visited
 
     Parameters:
 
-        - 'rm' - Represents the 'RoadMap' that the function receives as input
+        - 'rm' - the 'RoadMap' containing cities and their connections
 
     Return:
 
@@ -543,6 +543,21 @@ createPath matrix memoTable visited currentCity     |  Data.Bits.shiftL 1 numCit
 
 
 
+{-|
+    Function that returns a path that solves the TSP problem for a given RoadMap
+
+    Parameters:
+
+        - 'rm' - the 'RoadMap' containing cities and their connections
+
+    Return:
+
+        - 'Path' - a path of cities that solves the tsp
+
+    Complexity:
+
+        - 'O(n^2 * 2^n)' 
+-}
 travelSales :: RoadMap -> Path
 travelSales rm =  createPath adjMatrix (fillTable adjMatrix (createMemoizationTable (numCities+1) ) 0 0) 0 0
                     where
