@@ -63,7 +63,29 @@ For this algorithm we opted to use a simple dynamic approach to solve it, since 
 
 In this case, we could concentrate our focus on how the algorithm worked.
 
-The idea behind the dynamic approach is similar to the ...
+The idea behind the dynamic approach is similar to the brute force...
+
+---
+For this algorithm we chose a simple dynamic programming approach to solve the problem, as suggested in the function description in the project specifications.
+
+The idea behind this dynamic approach is similar to brute force, but it optimizes by avoiding redundant calculations through memoization. Instead of recalculating the same paths multiple times, we store the results of subproblems, which allows us to achieve a significant speedup compared to a naive brute-force solution.
+
+In this case, we started at city 0 and used recursion to fill in the memoization table. The table keeps track of the minimum distances for each set of visited cities. By doing this, we can efficiently compute the shortest path to each city without revisiting cities unnecessarily.
+
+Finally, beginning from an initial state where no cities have been visited, we follow the path to the next unvisited city with the shortest distance. This approach ensures we find the minimum path efficiently, balancing simplicity with performance.
+
+### Data Structures
+
+As mentioned before, the dynamic programming approach to solve this problem involved the creation of a table to store the computed distances. We created the structure **MemoizationTable**  exactly for that. 
+It's a simple Matrix of Data.Arrays, to enable random access and improve the efficiency of the access to data.
+
+---
+
+As previously mentioned, our dynamic programming approach to solve this problem involves creating a table to store computed distances for efficient retrieval. For this purpose, we designed a MemoizationTable structure, which serves as a matrix of Data.Arrays. This structure allows for quick, random access to previously computed distances, significantly improving data retrieval efficiency and reducing redundant calculations.
+
+
+
+
 
 
 
