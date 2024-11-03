@@ -14,27 +14,17 @@ We immediatly started thinking about how to implement in a functional language l
 
 ---
 
-
-The first step to complete this task was finding what algorithm we would like to implement.
-
-Using the knowledge we obtained about algorithms in college, we immediatly thought about the famous Dijkstra algorithm. It is a famous, well defined and simple approach to solve this problem, that we already studied and understood.
-
-We immediatly started thinking about how to implement in a functional language like Haskell.
-
-
-
-
 ### Data Structures
 
-After revisiting the algorithm logic, we understood that we had to, somehow, store some information about the different nodes of the graph. We had to know whether a city was already visited or not, it's distance to the city node and also the parent cities
+After revisiting the algorithm logic, we understood that we had to, somehow, store information about the different nodes of the graph. We had to know whether a city was already visited or not, it's distance to the city node and also the parent cities.
 
-For that we created an auxiliar data structure **DijkstraList**, which is actually a matrix, so that random access is possible and in constant time. This matrix has the number of entries equal to the number of cities, where each one stores the information about a city with the number of its index.
+For that we created an auxiliar data structure **DijkstraList**, which is actually an array , so that random access is possible and in constant time. This array has the number of entries equal to the number of cities, where each one stores the information about a city in the corresponding index.
 
 ---
 
 After reviewing the algorithm's logic, we realized that we needed to store key information about each node in the graph. Specifically, we had to track whether each city (node) had been visited, its current shortest distance from the source city, and the preceding city (parent) on the shortest path.
 
-To manage this data, we created an auxiliary data structure called DijkstraList. This structure is implemented as a matrix, allowing for efficient, constant-time random access. Each entry in the matrix corresponds to a specific city and stores all necessary information for that city, indexed by its unique identifier. This design enables us to quickly retrieve and update data for any city as we progress through the algorithm.
+To manage this data, we created an auxiliary data structure called DijkstraList. This structure is implemented as an array, allowing for efficient, constant-time random access. Each entry in the matrix corresponds to a specific city and stores all necessary information for that city, indexed by its unique identifier. This design enables us to quickly retrieve and update data for any city as we progress through the algorithm.
 
 ### Specifics 
 

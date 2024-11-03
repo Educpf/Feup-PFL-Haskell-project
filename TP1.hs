@@ -9,7 +9,7 @@ import qualified Data.Bits
 -- TODO
 -- When refering to City but is Int maybe say it!!!!
 
-
+--''
 type City = String
 type Path = [City]
 type Distance = Int
@@ -159,7 +159,7 @@ adjacent rm c = [ if  x == c then (y,d) else (x, d) | (x,y,d) <- rm, x == c || y
     Return:
 
         - 'Maybe' 'Distance' - 'Nothing' if 'Path' is invalid for the given 'RoadMap'
-             Otherwise, 'Just' 'x', where 'x' is the total length of the 'Path'
+            Otherwise, 'Just' 'x', where 'x' is the total length of the 'Path'
 
 
     Complexity:
@@ -185,7 +185,7 @@ pathDistance rm p = foldr (\ v acc -> case (v,acc) of
         - [City] - list of cities, where each one represents a 'City' with the highest calculated degree
 
     Complexity:
-        - O(n * m), where n is the number of elements in the roadmap and m is the number of different cities in the roadmap
+        - O(n * m), where n is the number of elements in the roadmap and m is the number of unique cities in the roadmap
 
 
 -}
@@ -196,7 +196,7 @@ rome rm = [ c | (c, d) <- cityDegree, d == maxDegree ]
             maxDegree = Data.List.maximum (map snd cityDegree)
 
 {-|
-    The 'dfs' function is an auxiliary function with the goal of calculate which cities can be visited for a given 'AdjList'
+    Computes the cities that can be visited from a given city
 
     Parameters:
 
@@ -222,18 +222,19 @@ dfs al c visited    |  c `elem` visited = visited
             children =  head [ map fst d | (city, d) <- al, city == c]
 
 {-|
-    The 'isStronglyConnected' function has the goal of calculate if a 'roadMap' is strongly connected
+    Checks if a roadmap is strongly connected, if every city can reach every other city
 
     Parameters:
 
-        - 'rm' - the 'RoadMap' containing cities and their connections
+        - rm - the 'RoadMap' containing cities and their connections
 
     Return:
 
-        - The function returns a 'Bool'. 'True' if all the cities are visited by the dfs, proving that the 'RoadMap' is strongly connected.
-            Otherwise, returns 'False'
+        - 'Bool' - 'True' if the roadmap is strongly connected and 'False' otherwise 
+
 
     Complexity:
+        - O(n * m), where n is the number of elements in the roadmap and m is the number of unique cities in the roadmap
 
 
 -}
@@ -245,22 +246,22 @@ isStronglyConnected rm = length (dfs (convertToAdjList rm) (head (cities rm)) []
 -- SHORTEST PATH
 
 {-|
-    The 'createDijkstraTable' function is an auxiliary funtion with the goal of create a 'DijkstraList'. The objective is to help the execution of dijkstra algorithm.
+    Auxiliar function that creates a 'DijkstraList' 
     
     Note: 'DijkstraList' is an array with all values initialized to (False, maxbound, []), except the origin that is initialized as (False, 0, [])
 
     Parameters:
 
-        - 'len' - Represents size that the table shoul have
+        - 'len' - the size that the table should have (number of cities)
 
-        - 'origin' - It's the origin node of the shortest path
+        - 'origin' - the origin node of the shortest path
 
     Return:
 
-        - The function returns a 'DijkstraList', properly initialized
+        - 'DijkstraList', a list with all cities(as index) storing visited state, distance from origin and a list with previous city
 
     Complexity:
-
+        - O(n), where n is the len passed as argument, representing the number of cities of the roadmap
 
 -}
 createDijkstraTable :: Int -> Int -> DijkstraList
@@ -268,21 +269,20 @@ createDijkstraTable len origin = Data.Array.array (0,len) [if i == origin then (
 
 
 {-|
-    The 'getDijkstraPath' function is an auxiliary funtion with the purpose of, from a 'DijkstraList' completed and a destiny return the shortest path 
+    Auxiliar function that computes the Dijkstra path from a given 'DijkstraList' and starting point
 
     Parameters:
 
-        - 'list' - 'DijkstraList' to perform the search of the path
+        - list - 'DijkstraList' to perform the search of the path
 
-        - 'dest' - Destination node of the path 
+        - dest - Destination node of the path 
 
     Return:
 
-        - The function returns a list of lists of cities, which are the differents paths that exist, 
-            since it can be more than one path because they can have the same distance
+        - [[City]], list of lists of cities, representing the various possible paths from an origin to a destination
 
     Complexity:
-
+        - O(b^p) ???
 
 -}
 getDijkstraPath :: DijkstraList -> Int -> [[City]] -- Use cities as Int
@@ -296,7 +296,7 @@ getDijkstraPath list dest  | null back = [[show dest]]
 
     Parameters:
 
-        - 'list' - 'DijkstraList' to perform the search for the Node
+        - list - 'DijkstraList' to perform the search for the Node
 
     Return:
 
@@ -304,7 +304,7 @@ getDijkstraPath list dest  | null back = [[show dest]]
 
     Complexity:
 
-        - 'O(n)' - where 'n' is the number of Cities stored in the 'DijkstraList'
+        - O(n) - where 'n' is the number of Cities stored in the 'DijkstraList'
 -}
 getSmallerUnvisited :: DijkstraList -> Int
 getSmallerUnvisited list = result
@@ -317,8 +317,11 @@ getSmallerUnvisited list = result
     Parameters:
 
         - 'matrix' - the 'AdjMatrix' with the city connections
+
         - 'list' - the 'DijkstraList' to update
+
         - 'origin' - the origin 'City' as 'Int'
+
         - 'dest' - the destiny 'City' as 'Int'
 
     Return:
