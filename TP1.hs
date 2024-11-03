@@ -6,10 +6,7 @@ import qualified Data.Bits
 
 -- Uncomment the some/all of the first three lines to import the modules, do not change the code of these lines.
 
--- TODO
--- When refering to City but is Int maybe say it!!!!
 
---''
 type City = String
 type Path = [City]
 type Distance = Int
@@ -34,6 +31,7 @@ type MemoizationTable = Data.Array.Array (Int, Int) (Maybe Distance)
         - 'AdjList' - the conversion result
     
     Complexity:
+
         - O(n^2 + n*m), where n is the number of elements in the roadmap and m the number of cities 
 
 -}
@@ -52,8 +50,8 @@ convertToAdjList rm = [(city, adjacent rm city) | city <- cities rm]
         - 'AdjMatrix' - the conversion result 
 
     Complexity:
+
         - O(n^2 + m^2 * n), where n is the number of elements in the roadmap and m is the number of different cities in the roadmap
-            cities | calc cities * distnace
 -}
 createAdjMatrix :: RoadMap -> AdjMatrix
 createAdjMatrix rm = Data.Array.array ((0,0), (ncities,ncities)) [((x,y),distance rm (show x) (show y))|  x <- [0..ncities], y <- [0..ncities]]
@@ -71,6 +69,7 @@ createAdjMatrix rm = Data.Array.array ((0,0), (ncities,ncities)) [((x,y),distanc
         - ['City'] - a list of the unique cities
 
     Complexity:
+
         - O(n^2), where n is the number of elements in the roadmap
 
 -}
@@ -93,12 +92,12 @@ cities = Data.List.nub . foldr (\ (c1,c2,_) acc -> c1 : c2 : acc) []
         - 'Bool' - 'True' if the cities are connected and 'False' otherwise 
 
     Complexity:
+
         - O(n), where n is the number of elements in the roadmap
 
 -}
 areAdjacent :: RoadMap -> City -> City -> Bool
-areAdjacent rm c1 c2 = or [(c1==x && c2==y) || (c2==x && c1==y) | (x,y,_) <- rm]
--- areAdjacent rm c1 c2 = any (\(x,y,_) -> (c1==x && c2==y) || (c2==x && c1==y)) rm 
+areAdjacent rm c1 c2 = any (\(x,y,_) -> (c1==x && c2==y) || (c2==x && c1==y)) rm 
 
 
 {-|
@@ -118,6 +117,7 @@ areAdjacent rm c1 c2 = or [(c1==x && c2==y) || (c2==x && c1==y) | (x,y,_) <- rm]
             Otherwise, 'Just' 'x', where 'x' is the distance between the cities
 
     Complexity:
+
         - O(n), where n is the number of elements in the roadmap
 
 -}
@@ -140,11 +140,11 @@ distance rm c1 c2 = fmap (\(_,_,d) -> d) (Data.List.find (\(x,y,_) -> (c1==x && 
         -- A 'Distance' - the distance to that city
 
     Complexity:
+
         - O(n), where n is the number of elements in the roadmap
 
 -}
 adjacent :: RoadMap -> City -> [(City,Distance)]
--- adjacent rm c = [ (y,d)  | (x,y,d) <- rm, x == c] ++ [(x,d)| (x,y,d) <- rm, y == c]
 adjacent rm c = [ if  x == c then (y,d) else (x, d) | (x,y,d) <- rm, x == c || y == c]
 
 {-|
@@ -163,8 +163,8 @@ adjacent rm c = [ if  x == c then (y,d) else (x, d) | (x,y,d) <- rm, x == c || y
 
 
     Complexity:
-        - O(n * m), where n is the number of elements in the roadmap and m is number of elements in the path
 
+        - O(n * m), where n is the number of elements in the roadmap and m is number of elements in the path
 
 -}
 pathDistance :: RoadMap -> Path -> Maybe Distance
@@ -182,11 +182,11 @@ pathDistance rm p = foldr (\ v acc -> case (v,acc) of
 
     Return:
 
-        - [City] - list of cities, where each one represents a 'City' with the highest calculated degree
+        - ['City'] - list of cities, where each one represents a 'City' with the highest calculated degree
 
     Complexity:
-        - O(n * m), where n is the number of elements in the roadmap and m is the number of unique cities in the roadmap
 
+        - O(n * m), where n is the number of elements in the roadmap and m is the number of unique cities in the roadmap
 
 -}
 rome :: RoadMap -> [City]
@@ -208,13 +208,13 @@ rome rm = [ c | (c, d) <- cityDegree, d == maxDegree ]
 
     Return:
 
-        - [City] - list of cities, which are the cities that the dfs can reach from a starting city (visited cities)
+        - ['City'] - list of cities, which are the cities that the dfs can reach from a starting city (visited cities)
 
     Complexity:
-        - O(V + E), where V is the number of cities and E is the number of connections
+    
+        - O(n + m), where n is the number of cities and m is the number of connections between them
 
 -}
--- array ! 2
 dfs :: AdjList -> City -> [City] -> [City]
 dfs al c visited    |  c `elem` visited = visited
                     | otherwise = foldr (dfs al) (c : visited) children
@@ -234,8 +234,8 @@ dfs al c visited    |  c `elem` visited = visited
 
 
     Complexity:
-        - O(n * m), where n is the number of elements in the roadmap and m is the number of unique cities in the roadmap
 
+        - O(n^2 + n * m), where n is the number of elements in the roadmap and m is the number of unique cities in the roadmap 
 
 -}
 isStronglyConnected :: RoadMap -> Bool
@@ -246,9 +246,7 @@ isStronglyConnected rm = length (dfs (convertToAdjList rm) (head (cities rm)) []
 -- SHORTEST PATH
 
 {-|
-    Auxiliar function that creates a 'DijkstraList' 
-    
-    Note: 'DijkstraList' is an array with all values initialized to (False, maxbound, []), except the origin that is initialized as (False, 0, [])
+    Auxiliar function that creates a 'DijkstraList' with all values initialized to (False, maxbound, []), except the origin that is initialized as (False, 0, [])
 
     Parameters:
 
@@ -261,6 +259,7 @@ isStronglyConnected rm = length (dfs (convertToAdjList rm) (head (cities rm)) []
         - 'DijkstraList', a list with all cities(as index) storing visited state, distance from origin and a list with previous city
 
     Complexity:
+
         - O(n), where n is the len passed as argument, representing the number of cities of the roadmap
 
 -}
@@ -282,7 +281,8 @@ createDijkstraTable len origin = Data.Array.array (0,len) [if i == origin then (
         - [[City]], list of lists of cities, representing the various possible paths from an origin to a destination
 
     Complexity:
-        - O(b^p) ???
+
+        - O(n) where n is the minimal length of the path that connects the cities, stored in the DijkstraList
 
 -}
 getDijkstraPath :: DijkstraList -> Int -> [[City]] -- Use cities as Int
@@ -455,7 +455,7 @@ getNumCities matrix = snd (snd (Data.Array.bounds matrix)) + 1
 
     Complexity:
 
-        - 'O(n^2 * 2^n)' 
+        - 'O(n^2 * 2^n)' - where n is the number of cities in AdjMatrix
 -}
 fillTable :: AdjMatrix -> MemoizationTable -> Int -> Int -> MemoizationTable
 fillTable matrix table visited origin | storedValue /= Nothing = table -- Value already stored in table, return table
@@ -489,7 +489,6 @@ fillTable matrix table visited origin | storedValue /= Nothing = table -- Value 
 {-|
     Auxiliary function that creates an empty 'MemoizationTable'
     
-    Note: 'DijkstraList' is an array with all values initialized to (False, maxbound, []), except the origin that is initialized as (False, 0, [])
 
     Parameters:
 
@@ -501,7 +500,7 @@ fillTable matrix table visited origin | storedValue /= Nothing = table -- Value 
 
     Complexity:
 
-        - O(n^2 * n)
+        - O(n^2 * n) - where n is the size passed as argument, representing the number of cities
 
 -}
 createMemoizationTable :: Int -> MemoizationTable
@@ -527,7 +526,7 @@ createMemoizationTable size = Data.Array.array ((0, 0), (maxRow, maxColumn)) [ (
 
     Complexity:
 
-        - O(n^2) - where n is the total number of cities 
+        - O(n^2) - where n is the total number of cities in the AdjMatrix
 
 -}
 createPath :: AdjMatrix -> MemoizationTable -> Int -> Int -> Path -- update create path
@@ -559,7 +558,7 @@ createPath matrix memoTable visited currentCity     |  Data.Bits.shiftL 1 numCit
 
     Complexity:
 
-        - 'O(n^2 * 2^n)' 
+        - 'O(n^2 * 2^n)', where n is the total number of cities in the AdjMatrix
 -}
 travelSales :: RoadMap -> Path
 travelSales rm =  createPath adjMatrix (fillTable adjMatrix (createMemoizationTable (numCities+1) ) 0 0) 0 0
